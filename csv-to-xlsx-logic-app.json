@@ -1,0 +1,114 @@
+{
+    "$connections": {
+        "value": {
+            "azureblob": {
+                "connectionId": "YOUR-INFORMATION-HERE",
+                "connectionName": "azureblob",
+                "id": "YOUR-INFORMATION-HERE"
+            },
+            "cloudmersiveconvert": {
+                "connectionId": "YOUR-INFORMATION-HERE",
+                "connectionName": "cloudmersiveconvert",
+                "id": "YOUR-INFORMATION-HERE"
+            }
+        }
+    },
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "CSV_to_Excel_XLSX": {
+                "inputs": {
+                    "body": {
+                        "$content-type": "multipart/form-data",
+                        "$multipart": [
+                            {
+                                "body": "@body('Get_blob_content')",
+                                "headers": {
+                                    "Content-Disposition": "form-data; name=\"inputFile\""
+                                }
+                            }
+                        ]
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['cloudmersiveconvert']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/convert/csv/to/xlsx"
+                },
+                "runAfter": {
+                    "Get_blob_content": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "Create_blob": {
+                "inputs": {
+                    "body": "@binary(body('CSV_to_Excel_XLSX'))",
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/datasets/default/files",
+                    "queries": {
+                        "folderPath": "/csv",
+                        "name": "output.xlsx",
+                        "queryParametersSingleEncoded": true
+                    }
+                },
+                "runAfter": {
+                    "CSV_to_Excel_XLSX": [
+                        "Succeeded"
+                    ]
+                },
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                },
+                "type": "ApiConnection"
+            },
+            "Get_blob_content": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/default/files/@{encodeURIComponent(encodeURIComponent('JTJmY3N2JTJmb3V0cHV0LmNzdg=='))}/content",
+                    "queries": {
+                        "inferContentType": true
+                    }
+                },
+                "metadata": {
+                    "JTJmY3N2JTJmb3V0cHV0LmNzdg==": "/csv/output.csv"
+                },
+                "runAfter": {},
+                "type": "ApiConnection"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "Recurrence": {
+                "inputs": {},
+                "recurrence": {
+                    "frequency": "Minute",
+                    "interval": 3
+                },
+                "type": "Recurrence"
+            }
+        }
+    }
+}
